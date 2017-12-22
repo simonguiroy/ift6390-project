@@ -80,6 +80,13 @@ def train(epoch):
         output = model(data.view(args.batch_size, -1))
         loss = torch.nn.functional.nll_loss(output, target)
         loss.backward()
+
+        # l2 reg
+        l2 = 0
+        for p in model.parameters():
+            l2 += torch.sum(p.pow(2))
+        (args.l2_weight * l2).backward()
+
         opt.step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
