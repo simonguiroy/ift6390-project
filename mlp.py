@@ -23,7 +23,7 @@ class MLP(nn.Module):
         self.nclasses = layer_dims[-1]
         self.num_layers = len(layer_dims)-1
 
-        self.nonlinears = nn.ModuleList([ nn.ReLU() for _ in range(self.num_layers-1)])
+        self.nonlinears = nn.ModuleList([nn.ReLU() for _ in range(self.num_layers-1)])
         self.nonlinears.append(nn.LogSoftmax())
 
         layer_list = [ nn.Linear(layer_dims[i], layer_dims[i+1]) for i in range(len(layer_dims)-1)]
@@ -46,11 +46,13 @@ def get_iterator(is_train):
     if args.dataset == "mnist":
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))])
-        dataset = datasets.MNIST(root='./mnist_data', download=True, train=is_train, transform=transform)
+            transforms.Normalize((0.5,), (0.5,))]
+        )
+        dataset = datasets.MNIST(root='./mnist_data', download=False, train=is_train, transform=transform)
     elif args.dataset == "cifar":
         transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        )
         dataset = datasets.CIFAR10(root="/data/lisa/data/cifar10", download=False, train=is_train, transform=transform)
 
     return torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, num_workers=4, shuffle=is_train)
@@ -136,7 +138,7 @@ val_accs = []
 for epoch in range(args.epochs):
     train_acc, train_loss = train(epoch)
     val_acc, val_loss = test()
-    if val_loss > best_val_loss:
+    if val_loss < best_val_loss:
         print("Checkpoint!")
         best_val_loss = val_loss
         torch.save(model.state_dict(), os.path.join(args.logdir, "best_model.pkl"))
@@ -152,5 +154,4 @@ plt.ylabel("Accuracy")
 plt.savefig(os.path.join(args.logdir, "acc.png"))
 plt.close()
 
-ipdb.set_trace()
 
