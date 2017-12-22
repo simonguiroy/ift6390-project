@@ -39,25 +39,24 @@ class MLP(nn.Module):
             out = nonlinear(layer(out))
         return out
 
+def get_iterator(is_train):
+    if args.dataset == "mnist":
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))])
+        dataset = datasets.MNIST(root='./data', download=True, train=is_train, transform=transform)
+    elif args.dataset == "cifar":
+        transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        dataset = datasets.CIFAR10(root="/data/lisa/data/cifar10", download=False, train=is_train, transform=transform)
+
+    return torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, num_workers=4, shuffle=is_train)
+
+
 
 # PREPARE DATA
-if args.use_mnist is True:
-    kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(args.data_path, train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
-    test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(args.data_path, train=False, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
-else:
-    raise NotImplementedError()
+train_loader = get_iterator(True)
+test_loader = get_iterator(False)
 
 # LOAD MODEL
 model = MLP(args.layers_dims)
