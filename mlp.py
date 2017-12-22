@@ -44,7 +44,7 @@ def get_iterator(is_train):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))])
-        dataset = datasets.MNIST(root='./data', download=True, train=is_train, transform=transform)
+        dataset = datasets.MNIST(root='./mnist_data', download=True, train=is_train, transform=transform)
     elif args.dataset == "cifar":
         transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -76,7 +76,7 @@ def train(epoch):
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data), Variable(target)
         opt.zero_grad()
-        output = model(data.view(args.batch_size, -1))
+        output = model(data.view(data.size(0), -1))
         loss = torch.nn.functional.nll_loss(output, target)
         loss.backward()
 
@@ -112,7 +112,7 @@ def test():
         if args.cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
-        output = model(data.view(args.batch_size, -1))
+        output = model(data.view(data.size(0), -1))
         test_loss += nn.functional.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
