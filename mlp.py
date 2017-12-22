@@ -5,6 +5,9 @@ from torch.autograd import Variable
 import args
 import numpy as np
 import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import ipdb
 
@@ -128,11 +131,26 @@ if not os.path.isdir(args.logdir):
     os.mkdir(args.logdir)
 
 best_val_loss = np.inf
+train_accs = []
+val_accs = []
 for epoch in range(args.epochs):
-    train(epoch)
-    _, val_loss = test()
+    train_acc, train_loss = train(epoch)
+    val_acc, val_loss = test()
     if val_loss > best_val_loss:
         print("Checkpoint!")
         best_val_loss = val_loss
         torch.save(model.state_dict(), os.path.join(args.logdir, "best_model.pkl"))
+
+    train_accs.append(train_acc)
+    val_accs.append(val_acc)
+
+plt.figure()
+plt.plot(train_accs)
+plt.plot(val_accs)
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.savefig(os.path.join(args.logdir, "acc.png"))
+plt.close()
+
+ipdb.set_trace()
 
