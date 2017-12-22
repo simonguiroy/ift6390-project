@@ -8,6 +8,8 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 
+import os
+
 from models import *
 
 #Training settings
@@ -20,6 +22,9 @@ parser.add_argument('--momentum', type=float, default=0.5, metavar='M')
 parser.add_argument('--no-cuda', action='store_true', default=False)
 parser.add_argument('--seed', type=int, default=1, metavar='S')
 parser.add_argument('--log-interval', type=int,default=200, metavar='N')
+parser.add_argument('--save_mode', default='none')
+parser.add_argument('--checkpoint', default='./checkpoint/check1')
+
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -27,6 +32,26 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+
+kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+train_loader = torch.utils.data.DataLoader(
+    datasets.MNIST('./data', train=True, download=True,
+                  transform=transforms.Compose([
+                      transforms.ToTensor(),
+                      transforms.Normalize((0.5,), (0.5,))
+                  ])),
+    batch_size=args.batch_size, shuffle=True, **kwargs)
+test_loader = torch.utils.data.DataLoader(
+    datasets.MNIST('./data', train=False, transform=transforms.Compose([
+                       transforms.ToTensor(),
+                       transforms.Normalize((0.5,), (0.5,))
+                   ])),
+    batch_size=args.test_batch_size, shuffle=True, **kwargs)
+
+
+
+
+'''
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('./data', train=True, download=True,
@@ -41,6 +66,11 @@ test_loader = torch.utils.data.DataLoader(
                        transforms.Normalize((0.1307,), (0.3081,))
                    ])),
     batch_size=args.test_batch_size, shuffle=True, **kwargs)
+'''
+
+
+best_acc = 0
+final_acc = 0
 
 
 model = LeNet()
@@ -67,7 +97,9 @@ def train(epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data[0]))
 
-def test():
+def test(epoch):
+    global best_acc
+    global final_acc
     model.eval()
     test_loss = 0
     correct = 0
@@ -86,23 +118,35 @@ def test():
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct,len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
-'''
-def save()
+
+    acc = 100.*correct/ len(test_loader.dataset)
     # Save checkpoint.
-    acc = 100.*correct/total
-    if args.save:
-        print('Saving..')
-        state = {
-            'net': net.module if use_cuda else net,
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(state, args.checkpoint)
+    if acc > best_acc:
         best_acc = acc
-'''
+        if args.save_mode == 'best_acc':
+            print('Saving..')
+            state = {
+                'net': model.module if args.cuda else model,
+                'acc': acc,
+                'epoch': epoch,
+            }
+            if not os.path.isdir('checkpoint'):
+                os.mkdir('checkpoint')
+            torch.save(state, args.checkpoint)
+    final_acc = acc
+
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
-    test()
+    test(epoch)
+if args.save_mode == 'full_train':
+    print('Saving..')
+    state = {
+        'net': model.module if args.cuda else model,
+        'acc': final_acc,
+        'epoch': args.epochs,
+    }
+    if not os.path.isdir('checkpoint'):
+        os.mkdir('checkpoint')
+    torch.save(state, args.checkpoint)
+

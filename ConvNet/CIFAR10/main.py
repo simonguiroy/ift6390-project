@@ -14,18 +14,20 @@ import torch.backends.cudnn as cudnn
 from models import *
 from utils import progress_bar
 
+import os
 
 #Training settings
 parser = argparse.ArgumentParser(description='ConvNet for MNIST')
-parser.add_argument('--batch-size', type=int, default=4, metavar='N', help='input training batch size (default=64)')
-parser.add_argument('--test-batch-size', type=int, default=4, metavar='N')
+parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='input training batch size (default=64)')
+parser.add_argument('--test-batch-size', type=int, default=128, metavar='N')
 parser.add_argument('--epochs', type=int, default=10, metavar='N')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR')
+parser.add_argument('--dropout', type=float, default=0.5, metavar='DO')
 parser.add_argument('--momentum', type=float, default=0.9, metavar='M')
 parser.add_argument('--no-cuda', action='store_true', default=False)
 parser.add_argument('--seed', type=int, default=1, metavar='S')
 parser.add_argument('--log-interval', type=int,default=10, metavar='N')
-parser.add_argument('--save', action='store_true', help='save checkpoint')
+parser.add_argument('--save_mode', default='none')
 parser.add_argument('--checkpoint', default='./checkpoint/check1')
 parser.add_argument('--logdir', default='./logs/')
 
@@ -38,25 +40,26 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 
-'''
+
 transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
                                           shuffle=True, num_workers=2)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=4,
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.test_batch_size,
                                          shuffle=False, num_workers=2)
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-'''
 
+
+'''
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
@@ -74,9 +77,12 @@ testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+'''
 
+best_acc = 0
+final_acc = 0
 
-net = LeNet()
+net = LeNetDropout(args.dropout)
 
 if args.cuda:
     net.cuda()
@@ -112,7 +118,8 @@ def train(epoch):
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 def test(epoch):
-    #global best_acc
+    global best_acc
+    global final_acc
     net.eval()
     test_loss = 0
     correct = 0
@@ -132,23 +139,33 @@ def test(epoch):
         progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-'''
     # Save checkpoint.
     acc = 100.*correct/total
-    if args.save:
-        print('Saving..')
-        state = {
-            'net': net.module if use_cuda else net,
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(state, args.checkpoint)
+    if acc > best_acc:
         best_acc = acc
-'''		
+        if args.save_mode == 'best_acc':
+            print('Saving..')
+            state = {
+                'net': net.module if args.cuda else net,
+                'acc': acc,
+                'epoch': epoch,
+            }
+            if not os.path.isdir('checkpoint'):
+                os.mkdir('checkpoint')
+            torch.save(state, args.checkpoint)
+    final_acc = acc		
 		
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     test(epoch)
+if args.save_mode == 'full_train':
+    print('Saving..')
+    state = {
+        'net': net.module if args.cuda else net,
+        'acc': final_acc,
+        'epoch': args.epochs,
+    }
+    if not os.path.isdir('checkpoint'):
+        os.mkdir('checkpoint')
+    torch.save(state, args.checkpoint)
 
