@@ -21,4 +21,4 @@ class LeNetDropout(nn.Module):
         x = self.drop(x)
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
-        return
+        return x

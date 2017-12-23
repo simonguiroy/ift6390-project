@@ -32,7 +32,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-
+	
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('./data', train=True, download=True,
@@ -49,30 +49,6 @@ test_loader = torch.utils.data.DataLoader(
     batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
-
-
-'''
-kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('./data', train=True, download=True,
-                  transform=transforms.Compose([
-                      transforms.ToTensor(),
-                      transforms.Normalize((0.1307,), (0.3081,))
-                  ])),
-    batch_size=args.batch_size, shuffle=True, **kwargs)
-test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('./data', train=False, transform=transforms.Compose([
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
-                   ])),
-    batch_size=args.test_batch_size, shuffle=True, **kwargs)
-'''
-
-
-best_acc = 0
-final_acc = 0
-
-
 model = LeNet()
 if args.cuda:
     model.cuda()
@@ -80,6 +56,10 @@ if args.cuda:
     cudnn.benchmark = True
 
 optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+
+best_acc = 0
+final_acc = 0
+
 
 def train(epoch):
     model.train()
@@ -97,6 +77,7 @@ def train(epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data[0]))
 
+
 def test(epoch):
     global best_acc
     global final_acc
@@ -113,10 +94,10 @@ def test(epoch):
         #the prediction is the output with max probability
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-        
+   
     test_loss /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct,len(test_loader.dataset),
+        test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
     acc = 100.*correct/ len(test_loader.dataset)
@@ -149,4 +130,3 @@ if args.save_mode == 'full_train':
     if not os.path.isdir('checkpoint'):
         os.mkdir('checkpoint')
     torch.save(state, args.checkpoint)
-

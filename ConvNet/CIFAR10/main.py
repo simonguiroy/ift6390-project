@@ -19,7 +19,7 @@ import os
 #Training settings
 parser = argparse.ArgumentParser(description='ConvNet for MNIST')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='input training batch size (default=64)')
-parser.add_argument('--test-batch-size', type=int, default=128, metavar='N')
+parser.add_argument('--test-batch-size', type=int, default=100, metavar='N')
 parser.add_argument('--epochs', type=int, default=10, metavar='N')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR')
 parser.add_argument('--dropout', type=float, default=0.5, metavar='DO')
@@ -27,7 +27,9 @@ parser.add_argument('--momentum', type=float, default=0.9, metavar='M')
 parser.add_argument('--no-cuda', action='store_true', default=False)
 parser.add_argument('--seed', type=int, default=1, metavar='S')
 parser.add_argument('--log-interval', type=int,default=10, metavar='N')
-parser.add_argument('--save_mode', default='none')
+parser.add_argument('--optim', default='SGD', help='SGD | Adam')
+parser.add_argument('--model', default='LeNet', help='LeNet | LeNetDropout | LeNetDropoutXavier')
+parser.add_argument('--save_mode', default='none', help='none | best_acc | full_train')
 parser.add_argument('--checkpoint', default='./checkpoint/check1')
 parser.add_argument('--logdir', default='./logs/')
 
@@ -41,17 +43,23 @@ if args.cuda:
 
 
 
-transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+transform_train = transforms.Compose([
+#    transforms.RandomCrop(32, padding=4),
+#    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
+                                        download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
                                           shuffle=True, num_workers=2)
 
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
 testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
+                                       download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=args.test_batch_size,
                                          shuffle=False, num_workers=2)
 
@@ -82,7 +90,15 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 best_acc = 0
 final_acc = 0
 
-net = LeNetDropout(args.dropout)
+if args.model == 'LeNet':
+    net = LeNet()
+elif args.model == 'LeNetDropout':
+    net = LeNetDropout(args.dropout)
+elif args.model == 'LeNetDropoutXavier':
+    net = LeNetDropoutXavier(args.dropout)
+elif args.model == 'BiggerLeNetDropoutXavier':
+    net = BiggerLeNetDropoutXavier(args.dropout)
+
 
 if args.cuda:
     net.cuda()
@@ -90,8 +106,11 @@ if args.cuda:
     cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=5e-4)
 
+if args.optim == 'SGD':
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=5e-4)
+elif args.optim == 'Adam':
+    optimizer = optim.Adam(net.parameters())
 
 def train(epoch):
     print('\nEpoch: %d' % epoch)
