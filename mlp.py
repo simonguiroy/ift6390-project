@@ -46,13 +46,24 @@ def get_iterator(is_train):
     if args.dataset == "mnist":
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))]
+            #transforms.Normalize((0.5,), (0.5,))
+            ]
         )
         dataset = datasets.MNIST(root='./mnist_data', download=False, train=is_train, transform=transform)
     elif args.dataset == "cifar":
-        transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        )
+        if is_train:
+            transform = transforms.Compose(
+                [
+                    #transforms.RandomCrop(32, padding=4),
+                    #transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                    ]
+            )
+        else:
+            transform = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+            )
         dataset = datasets.CIFAR10(root="/data/lisa/data/cifar10", download=False, train=is_train, transform=transform)
 
     return torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, num_workers=4, shuffle=is_train)
@@ -135,23 +146,30 @@ if not os.path.isdir(args.logdir):
 best_val_loss = np.inf
 train_accs = []
 val_accs = []
-for epoch in range(args.epochs):
-    train_acc, train_loss = train(epoch)
-    val_acc, val_loss = test()
-    if val_loss < best_val_loss:
-        print("Checkpoint!")
-        best_val_loss = val_loss
-        torch.save(model.state_dict(), os.path.join(args.logdir, "best_model.pkl"))
+try:
+    for epoch in range(args.epochs):
+        train_acc, train_loss = train(epoch)
+        val_acc, val_loss = test()
+        if val_loss < best_val_loss:
+            print("Checkpoint!")
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), os.path.join(args.logdir, "best_model.pkl"))
 
-    train_accs.append(train_acc)
-    val_accs.append(val_acc)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
+
+except KeyboardInterrupt:
+    print("Interrupt!")
 
 plt.figure()
-plt.plot(train_accs)
-plt.plot(val_accs)
+train_plt, = plt.plot(train_accs)
+val_plt, = plt.plot(val_accs)
+plt.legend([train_plt, val_plt], ["train acc", "val acc"])
 plt.xlabel("Epochs")
 plt.ylabel("Accuracy")
 plt.savefig(os.path.join(args.logdir, "acc.png"))
 plt.close()
 
-
+import pickle
+with open(os.path.join(args.logdir, 'stats.pkl'), 'wb') as f:
+    pickle.dump([train_accs, val_accs], f)
